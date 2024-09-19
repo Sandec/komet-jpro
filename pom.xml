@@ -627,38 +627,6 @@
                     </annotationProcessors>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <argLine>
-                        -Dtestfx.headless=true
-                        -Dprism.order=sw
-                        -Dprism.text=t2k
-                        -Djava.awt.headless=true
-                        --add-opens=javafx.graphics/com.sun.glass.ui=org.testfx
-                        --add-opens=javafx.graphics/com.sun.javafx.application=org.testfx
-                        --add-exports=javafx.graphics/com.sun.javafx.application=org.testfx
-                        --add-exports=javafx.graphics/com.sun.glass.ui=org.testfx.monocle
-                        --add-exports=javafx.graphics/com.sun.javafx.util=org.testfx.monocle
-                        --add-exports=javafx.base/com.sun.javafx.logging=org.testfx.monocle
-                    </argLine>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>default-test</id>
-                        <phase>test</phase>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                        <configuration>
-                            <useModulePath>true</useModulePath>
-                            <forkCount>1</forkCount>
-                            <reuseForks>false</reuseForks>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
 </project>
