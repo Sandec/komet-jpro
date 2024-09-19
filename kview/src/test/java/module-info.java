@@ -17,6 +17,7 @@ module dev.ikm.komet.kview.test {
 
     requires org.testfx;
     requires org.testfx.junit5;
+    requires org.testfx.monocle;
     requires org.junit.jupiter.engine;
     requires org.junit.jupiter.params;
     requires org.junit.jupiter.api;

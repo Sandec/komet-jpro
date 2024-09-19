@@ -42,12 +42,17 @@
         </dependency>
         <!--        testing -->
         <dependency>
-            <groupId>org.testfx</groupId>
+            <groupId>one.jpro.platform.jpms</groupId>
             <artifactId>testfx-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.testfx</groupId>
+            <groupId>one.jpro.platform.jpms</groupId>
             <artifactId>testfx-junit5</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>one.jpro.platform.jpms</groupId>
+            <artifactId>openjfx-monocle</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>

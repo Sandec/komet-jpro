@@ -72,7 +72,9 @@
         <jpms-roaringbitmap.version>0.9.31-r7</jpms-roaringbitmap.version>
         <jpro.version>2024.3.3</jpro.version>
         <jpro-platform.version>0.4.1</jpro-platform.version>
-        <testfx.version>4.0.18</testfx.version>
+        <testfx.version>4.0.18-jpms</testfx.version>
+        <openjfx-monocle.version>21.0.2-jpms</openjfx-monocle.version>
+        <maven-surefire-plugin.version>3.5.0</maven-surefire-plugin.version>
         <classgraph.version>4.8.115</classgraph.version>
         <controlsfx.version>11.1.0</controlsfx.version>
         <ikonli.version>12.2.0</ikonli.version>
@@ -350,15 +352,21 @@
                 <version>${jpro-platform.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.testfx</groupId>
+                <groupId>one.jpro.platform.jpms</groupId>
                 <artifactId>testfx-core</artifactId>
                 <version>${testfx.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>org.testfx</groupId>
+                <groupId>one.jpro.platform.jpms</groupId>
                 <artifactId>testfx-junit5</artifactId>
                 <version>${testfx.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>one.jpro.platform.jpms</groupId>
+                <artifactId>openjfx-monocle</artifactId>
+                <version>${openjfx-monocle.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
@@ -613,6 +621,37 @@
                         <annotationProcessor>io.soabase.recordbuilder.processor.RecordBuilderProcessor</annotationProcessor>
                     </annotationProcessors>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <argLine>
+                        -Dtestfx.headless=true
+                        -Dprism.order=sw
+                        -Dprism.text=t2k
+                        -Djava.awt.headless=true
+                        --add-opens=javafx.base/com.sun.javafx.logging=ALL-UNNAMED
+                        --add-opens=javafx.graphics/com.sun.glass.ui=ALL-UNNAMED
+                        --add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
+                        --add-opens=javafx.graphics/com.sun.javafx.util=ALL-UNNAMED
+                    </argLine>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>default-test</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <useModulePath>true</useModulePath>
+                            <forkCount>1</forkCount>
+                            <reuseForks>false</reuseForks>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
