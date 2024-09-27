@@ -338,8 +338,14 @@ public class WebApp extends Application {
             scene.getStylesheets().addAll(CssHelper.defaultStyleSheet());
             stage.setScene(scene);
 
-            state.set(LOGIN);
-            launchLoginPage(stage);
+            if (IS_BROWSER) {
+                state.set(LOGIN);
+                launchLoginPage(stage);
+            } else {
+                state.set(SELECT_DATA_SOURCE);
+                state.addListener(this::appStateChangeListener);
+                launchSelectDataSourcePage(stage);
+            }
 
             addEventFilters(stage);
 
@@ -831,7 +837,14 @@ public class WebApp extends Application {
                     Platform.runLater(() -> state.set(LOADING_DATA_SOURCE));
                     TinkExecutor.threadPool().submit(new LoadDataSourceTask(state));
                 }
-                case RUNNING -> launchLandingPage(primaryStage, userProperty.get());
+                case RUNNING -> {
+                    if (userProperty.get() == null) {
+                        String username = System.getProperty("user.name");
+                        String capitalizeUsername = username.substring(0, 1).toUpperCase() + username.substring(1);
+                        userProperty.set(new User(capitalizeUsername));
+                    }
+                    launchLandingPage(primaryStage, userProperty.get());
+                }
                 case SHUTDOWN -> quit();
             }
         } catch (Throwable e) {
