@@ -112,6 +112,7 @@ import java.util.function.Consumer;
 import java.util.prefs.BackingStoreException;
 
 import static dev.ikm.komet.app.AppState.*;
+import static dev.ikm.komet.app.LoginFeatureFlag.*;
 import static dev.ikm.komet.framework.KometNodeFactory.KOMET_NODES;
 import static dev.ikm.komet.framework.window.WindowSettings.Keys.*;
 import static dev.ikm.komet.kview.events.EventTopics.JOURNAL_TOPIC;
@@ -338,14 +339,7 @@ public class WebApp extends Application {
             scene.getStylesheets().addAll(CssHelper.defaultStyleSheet());
             stage.setScene(scene);
 
-            if (IS_BROWSER) {
-                state.set(LOGIN);
-                launchLoginPage(stage);
-            } else {
-                state.set(SELECT_DATA_SOURCE);
-                state.addListener(this::appStateChangeListener);
-                launchSelectDataSourcePage(stage);
-            }
+            handleLoginFeature(ENABLED_WEB_ONLY, stage);
 
             addEventFilters(stage);
 
@@ -358,6 +352,57 @@ public class WebApp extends Application {
             LOG.error("Failed to initialize the application", ex);
             Platform.exit();
         }
+    }
+
+    /**
+     * Handles the login feature based on the provided {@link LoginFeatureFlag} and platform.
+     *
+     * @param loginFeatureFlag the current state of the login feature
+     * @param stage            the current application stage
+     */
+    public void handleLoginFeature(LoginFeatureFlag loginFeatureFlag, Stage stage) {
+        switch (loginFeatureFlag) {
+            case ENABLED_WEB_ONLY -> {
+                if (IS_BROWSER) {
+                    startLogin(stage);
+                } else {
+                    startSelectDataSource(stage);
+                }
+            }
+            case ENABLED_DESKTOP_ONLY -> {
+                if (IS_DESKTOP) {
+                    startLogin(stage);
+                } else {
+                    startSelectDataSource(stage);
+                }
+            }
+            case ENABLED -> startLogin(stage);
+            case DISABLED -> startSelectDataSource(stage);
+        }
+    }
+
+    /**
+     * Initiates the login process by setting the application state to {@link AppState#LOGIN}
+     * and launching the login page.
+     *
+     * @param stage the current application stage
+     */
+    private void startLogin(Stage stage) {
+        state.set(LOGIN);
+        launchLoginPage(stage);
+    }
+
+    /**
+     * Initiates the data source selection process by setting the application state
+     * to {@link AppState#SELECT_DATA_SOURCE}, adding a state change listener, and launching
+     * the data source selection page.
+     *
+     * @param stage the current application stage
+     */
+    private void startSelectDataSource(Stage stage) {
+        state.set(SELECT_DATA_SOURCE);
+        state.addListener(this::appStateChangeListener);
+        launchSelectDataSourcePage(stage);
     }
 
     @Override
