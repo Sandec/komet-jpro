@@ -28,6 +28,8 @@ import java.util.concurrent.CompletableFuture;
 
 public class BasicUserManager extends InMemoryUserManager {
 
+    private final Set<UsernamePasswordCredentials> users = new HashSet<>();
+
     public BasicUserManager() {
         super();
     }
@@ -74,10 +76,15 @@ public class BasicUserManager extends InMemoryUserManager {
 
                             UsernamePasswordCredentials credentials = new UsernamePasswordCredentials(key, password);
                             createUser(credentials, userRoles, Map.of("enabled", Boolean.TRUE));
+                            users.add(credentials);
                         }
                     }
                 }
             }
         }
+    }
+
+    public Set<UsernamePasswordCredentials> getUsers() {
+        return users;
     }
 }
