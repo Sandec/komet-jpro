@@ -69,6 +69,7 @@ public class LoginTest extends ApplicationTest {
     public static final String AUTH_ERROR_MSG = "Authentication failed: Invalid credentials.";
 
     private static final Logger LOG = LoggerFactory.getLogger(LoginTest.class);
+    private static final String ORIGINAL_USER_HOME = System.getProperty("user.home");
     private static final String SOLOR_DIR_NAME = "Solor";
     private static final String USERS_INI_FILE_NAME = "users.ini";
     private static final String MOCKED_USER = "user.test";
@@ -76,77 +77,9 @@ public class LoginTest extends ApplicationTest {
     private static final String MOCKED_USER_ROLE = "user";
 
     private Path tempDirectory;
-    private String originalUserHome;
     private static Set<UsernamePasswordCredentials> users;
     private MockedStatic<EvtBusFactory> mockedStaticEvtBusFactory;
     private FxRobot robot = new FxRobot();
-
-    /**
-     * Creates the temporary directory and the users.ini file.
-     */
-    private void createUsersFile() {
-        try {
-            // Create temporary directory for user home
-            tempDirectory = Files.createTempDirectory("mockedHome");
-
-            // Store the original user.home property to restore it later
-            originalUserHome = System.getProperty("user.home");
-
-            // Set the system property for user.home to the temporary directory
-            System.setProperty("user.home", tempDirectory.toString());
-
-            // Create the "Solor" directory
-            Path solorDir = tempDirectory.resolve(SOLOR_DIR_NAME);
-            if (Files.notExists(solorDir)) {
-                Files.createDirectory(solorDir);
-            }
-
-            // Create and populate the users.ini file
-            Path usersFile = solorDir.resolve(USERS_INI_FILE_NAME);
-            try (BufferedWriter writer = Files.newBufferedWriter(usersFile)) {
-                writer.write("""
-                    # Define users and passwords
-                    [users]
-                    %s = %s, %s
-                    """.formatted(MOCKED_USER, MOCKED_PASSWORD, MOCKED_USER_ROLE));
-            }
-
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to create temporary directory or users.ini file", e);
-        }
-    }
-
-    /**
-     * Cleans up the temporary directory and restores the original user.home system property.
-     */
-    private void cleanupFiles() throws IOException {
-        // Restore the original user.home system property
-        if (originalUserHome != null) {
-            System.setProperty("user.home", originalUserHome);
-        }
-
-        // Clean up the temporary directory
-        if (tempDirectory != null) {
-            try (Stream<Path> paths = Files.walk(tempDirectory)) {
-                paths.map(Path::toFile).forEach(File::delete);
-            }
-        }
-    }
-
-    /**
-     * Loads users from the specified file asynchronously and returns the set of users.
-     *
-     * @param filePath the path to the file containing user credentials
-     * @return a set of {@link UsernamePasswordCredentials} loaded from the file
-     * @throws ExecutionException if the computation threw an exception
-     * @throws InterruptedException if the current thread was interrupted while waiting
-     */
-    public static Set<UsernamePasswordCredentials> getUsers(Path filePath)
-            throws ExecutionException, InterruptedException {
-        BasicUserManager userManager = new BasicUserManager();
-        userManager.loadFileAsync(filePath.toString()).get();
-        return userManager.getUsers();
-    }
 
     /**
      * Sets up the test environment before each test.
@@ -168,14 +101,12 @@ public class LoginTest extends ApplicationTest {
         // Register the primary stage in TestFX
         FxToolkit.registerPrimaryStage();
 
-        Path usersFile = Path.of(System.getProperty("user.home"), SOLOR_DIR_NAME, USERS_INI_FILE_NAME);
-
+        Path usersFile = Path.of(ORIGINAL_USER_HOME, SOLOR_DIR_NAME, USERS_INI_FILE_NAME);
         if (Files.notExists(usersFile)) {
-            createUsersFile();
+            usersFile = createUsersFile();
         }
 
         users = getUsers(usersFile);
-
         assumeTrue(!users.isEmpty(), "No users loaded from users.ini. Skipping tests.");
 
         // Launch the application
@@ -193,6 +124,54 @@ public class LoginTest extends ApplicationTest {
             stage.setScene(scene);
             stage.show();
         });
+    }
+
+    /**
+     * Creates the temporary directory and the users.ini file.
+     */
+    private Path createUsersFile() {
+        try {
+            // Create temporary directory for user home
+            tempDirectory = Files.createTempDirectory("mockedHome");
+
+            // Set the system property for user.home to the temporary directory
+            System.setProperty("user.home", tempDirectory.toString());
+
+            // Create the "Solor" directory
+            Path solorDir = tempDirectory.resolve(SOLOR_DIR_NAME);
+            if (Files.notExists(solorDir)) {
+                Files.createDirectory(solorDir);
+            }
+
+            // Create and populate the users.ini file
+            Path usersFile = solorDir.resolve(USERS_INI_FILE_NAME);
+            try (BufferedWriter writer = Files.newBufferedWriter(usersFile)) {
+                writer.write("""
+                    # Define users and passwords
+                    [users]
+                    %s = %s, %s
+                    """.formatted(MOCKED_USER, MOCKED_PASSWORD, MOCKED_USER_ROLE));
+            }
+            return usersFile;
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create temporary directory or users.ini file", e);
+        }
+    }
+
+    /**
+     * Loads users from the specified file asynchronously and returns the set of users.
+     *
+     * @param filePath the path to the file containing user credentials
+     * @return a set of {@link UsernamePasswordCredentials} loaded from the file
+     * @throws ExecutionException if the computation threw an exception
+     * @throws InterruptedException if the current thread was interrupted while waiting
+     */
+    public static Set<UsernamePasswordCredentials> getUsers(Path filePath)
+            throws ExecutionException, InterruptedException {
+        BasicUserManager userManager = new BasicUserManager();
+        userManager.loadFileAsync(filePath.toString()).get();
+        return userManager.getUsers();
     }
 
     /**
@@ -220,6 +199,23 @@ public class LoginTest extends ApplicationTest {
 
         // Clean up the temporary directory and files
         cleanupFiles();
+    }
+
+    /**
+     * Cleans up the temporary directory and restores the original user.home system property.
+     */
+    private void cleanupFiles() throws IOException {
+        // Restore the original user.home system property
+        if (ORIGINAL_USER_HOME != null) {
+            System.setProperty("user.home", ORIGINAL_USER_HOME);
+        }
+
+        // Clean up the temporary directory
+        if (tempDirectory != null) {
+            try (Stream<Path> paths = Files.walk(tempDirectory)) {
+                paths.map(Path::toFile).forEach(File::delete);
+            }
+        }
     }
 
     /**
