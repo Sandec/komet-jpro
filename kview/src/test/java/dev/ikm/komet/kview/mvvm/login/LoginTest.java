@@ -1,18 +1,3 @@
-/*
- * Copyright © 2015 Integrated Knowledge Management (support@ikm.dev)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package dev.ikm.komet.kview.mvvm.login;
 
 import dev.ikm.komet.framework.events.EvtBus;
@@ -45,6 +30,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
@@ -56,7 +42,6 @@ import static org.mockito.Mockito.mockStatic;
 
 public class LoginTest extends ApplicationTest {
 
-    // Constants for UI elements
     private static final String SIGN_IN_BUTTON_ID = "#signInButton";
     private static final String USERNAME_TEXTFIELD_ID = "#usernameTextField";
     private static final String PASSWORD_TEXTFIELD_ID = "#passwordField";
@@ -128,6 +113,18 @@ public class LoginTest extends ApplicationTest {
 
     /**
      * Creates the temporary directory and the users.ini file.
+     * <p>
+     * This method performs the following actions:
+     * <ul>
+     *   <li>Creates a temporary directory for the user home.</li>
+     *   <li>Sets the system property for user.home to the temporary directory.</li>
+     *   <li>Creates the "Solor" directory if it does not exist.</li>
+     *   <li>Creates and populates the users.ini file with mock user data.</li>
+     * </ul>
+     * </p>
+     *
+     * @return the path to the created users.ini file
+     * @throws RuntimeException if an error occurs during the creation of the directory or file
      */
     private Path createUsersFile() {
         try {
@@ -146,11 +143,11 @@ public class LoginTest extends ApplicationTest {
             // Create and populate the users.ini file
             Path usersFile = solorDir.resolve(USERS_INI_FILE_NAME);
             try (BufferedWriter writer = Files.newBufferedWriter(usersFile)) {
-                writer.write("""
-                    # Define users and passwords
-                    [users]
-                    %s = %s, %s
-                    """.formatted(MOCKED_USER, MOCKED_PASSWORD, MOCKED_USER_ROLE));
+                writer.write(String.format("""
+                # Define users and passwords
+                [users]
+                %s = %s, %s
+                """, MOCKED_USER, MOCKED_PASSWORD, MOCKED_USER_ROLE));
             }
             return usersFile;
 
@@ -166,9 +163,10 @@ public class LoginTest extends ApplicationTest {
      * @return a set of {@link UsernamePasswordCredentials} loaded from the file
      * @throws ExecutionException if the computation threw an exception
      * @throws InterruptedException if the current thread was interrupted while waiting
+     * @throws IOException if an I/O error occurs while reading the file
      */
     public static Set<UsernamePasswordCredentials> getUsers(Path filePath)
-            throws ExecutionException, InterruptedException {
+            throws ExecutionException, InterruptedException, IOException {
         BasicUserManager userManager = new BasicUserManager();
         userManager.loadFileAsync(filePath.toString()).get();
         return userManager.getUsers();
@@ -203,6 +201,8 @@ public class LoginTest extends ApplicationTest {
 
     /**
      * Cleans up the temporary directory and restores the original user.home system property.
+     *
+     * @throws IOException if an I/O error occurs
      */
     private void cleanupFiles() throws IOException {
         // Restore the original user.home system property
@@ -213,7 +213,9 @@ public class LoginTest extends ApplicationTest {
         // Clean up the temporary directory
         if (tempDirectory != null) {
             try (Stream<Path> paths = Files.walk(tempDirectory)) {
-                paths.map(Path::toFile).forEach(File::delete);
+                paths.sorted(Comparator.reverseOrder())
+                        .map(Path::toFile)
+                        .forEach(File::delete);
             }
         }
     }
