@@ -11,9 +11,8 @@ import javafx.scene.layout.BorderPane;
 import one.jpro.platform.auth.core.basic.UsernamePasswordCredentials;
 import org.carlfx.cognitive.loader.FXMLMvvmLoader;
 import org.carlfx.cognitive.loader.JFXNode;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -22,7 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testfx.api.FxRobot;
 import org.testfx.api.FxToolkit;
-import org.testfx.framework.junit5.ApplicationTest;
+import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.util.WaitForAsyncUtils;
 
 import java.io.File;
@@ -36,11 +35,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 
-public class LoginTest extends ApplicationTest {
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(ApplicationExtension.class)
+public class LoginTest {
 
     private static final String SIGN_IN_BUTTON_ID = "#signInButton";
     private static final String USERNAME_TEXTFIELD_ID = "#usernameTextField";
@@ -62,9 +62,36 @@ public class LoginTest extends ApplicationTest {
     private static final String MOCKED_USER_ROLE = "user";
 
     private Path tempDirectory;
-    private static Set<UsernamePasswordCredentials> users;
+    private Set<UsernamePasswordCredentials> userCredentials;
     private MockedStatic<EvtBusFactory> mockedStaticEvtBusFactory;
-    private FxRobot robot = new FxRobot();
+    private final FxRobot robot = new FxRobot();
+
+    /**
+     * Initialize users before any tests run.
+     * <p>
+     * This method performs the following actions:
+     * <ul>
+     *   <li>Checks if the users file exists in the user's home directory.</li>
+     *   <li>If the users file does not exist, it creates the file with mock user data.</li>
+     *   <li>Loads user credentials from the users file.</li>
+     *   <li>Logs the loaded users and asserts that the users file is not empty or corrupted.</li>
+     * </ul>
+     * </p>
+     *
+     * @throws Exception if an error occurs during setup
+     */
+    @BeforeAll
+    void init() throws Exception {
+        Path usersFile = Path.of(ORIGINAL_USER_HOME, SOLOR_DIR_NAME, USERS_INI_FILE_NAME);
+        if (Files.notExists(usersFile)) {
+            LOG.info("Users file not found. Creating a mock 'user.ini' file.");
+            usersFile = createUsersFile();
+        }
+
+        userCredentials = getUserCredentials(usersFile);
+        LOG.info("Loaded users: {}", userCredentials.stream().map(UsernamePasswordCredentials::getUsername).toList());
+        assertFalse(userCredentials.isEmpty(), "No users loaded from 'users.ini' file. Users file is either empty or corrupted.");
+    }
 
     /**
      * Sets up the test environment before each test.
@@ -72,10 +99,8 @@ public class LoginTest extends ApplicationTest {
      * This method performs the following actions:
      * <ul>
      *   <li>Registers the primary stage in TestFX.</li>
-     *   <li>Creates the users file if it does not exist.</li>
-     *   <li>Loads users from the users file.</li>
-     *   <li>Assumes that users are loaded successfully, otherwise skips the tests.</li>
-     *   <li>Launches the application and displays the login page.</li>
+     *   <li>Mocks the {@link EvtBusFactory} to provide a mock event bus.</li>
+     *   <li>Loads the LoginPage from FXML and displays it in the stage.</li>
      * </ul>
      * </p>
      *
@@ -85,14 +110,6 @@ public class LoginTest extends ApplicationTest {
     void setup() throws Exception {
         // Register the primary stage in TestFX
         FxToolkit.registerPrimaryStage();
-
-        Path usersFile = Path.of(ORIGINAL_USER_HOME, SOLOR_DIR_NAME, USERS_INI_FILE_NAME);
-        if (Files.notExists(usersFile)) {
-            usersFile = createUsersFile();
-        }
-
-        users = getUsers(usersFile);
-        assumeTrue(!users.isEmpty(), "No users loaded from users.ini. Skipping tests.");
 
         // Launch the application
         FxToolkit.setupStage(stage -> {
@@ -157,19 +174,17 @@ public class LoginTest extends ApplicationTest {
     }
 
     /**
-     * Loads users from the specified file asynchronously and returns the set of users.
+     * Loads user credentials from the specified file asynchronously and returns the set of users.
      *
      * @param filePath the path to the file containing user credentials
      * @return a set of {@link UsernamePasswordCredentials} loaded from the file
      * @throws ExecutionException if the computation threw an exception
      * @throws InterruptedException if the current thread was interrupted while waiting
-     * @throws IOException if an I/O error occurs while reading the file
      */
-    public static Set<UsernamePasswordCredentials> getUsers(Path filePath)
-            throws ExecutionException, InterruptedException, IOException {
+    public static Set<UsernamePasswordCredentials> getUserCredentials(Path filePath)
+            throws ExecutionException, InterruptedException {
         BasicUserManager userManager = new BasicUserManager();
-        userManager.loadFileAsync(filePath.toString()).get();
-        return userManager.getUsers();
+        return userManager.loadFileAsync(filePath.toString()).get();
     }
 
     /**
@@ -179,7 +194,6 @@ public class LoginTest extends ApplicationTest {
      * <ul>
      *   <li>Cleans up TestFX stages and mocked resources.</li>
      *   <li>Closes the mocked static resources for {@link EvtBusFactory}.</li>
-     *   <li>Cleans up the temporary directory and files.</li>
      * </ul>
      * </p>
      *
@@ -194,17 +208,15 @@ public class LoginTest extends ApplicationTest {
         if (mockedStaticEvtBusFactory != null) {
             mockedStaticEvtBusFactory.close();
         }
-
-        // Clean up the temporary directory and files
-        cleanupFiles();
     }
 
     /**
-     * Cleans up the temporary directory and restores the original user.home system property.
+     * Cleans up the temporary directory and restores the original <code>user.home</code> system property.
      *
      * @throws IOException if an I/O error occurs
      */
-    private void cleanupFiles() throws IOException {
+    @AfterAll
+    public void cleanupFiles() throws IOException {
         // Restore the original user.home system property
         if (ORIGINAL_USER_HOME != null) {
             System.setProperty("user.home", ORIGINAL_USER_HOME);
@@ -292,7 +304,7 @@ public class LoginTest extends ApplicationTest {
      *
      * @return a stream of {@link Arguments} for input validation tests
      */
-    private static Stream<Arguments> inputValidationProvider() {
+    private Stream<Arguments> inputValidationProvider() {
         return Stream.of(
                 Arguments.of("user", "test123", USERNAME_ERROR_MSG, "", ""),
                 Arguments.of("test123", "test", "", PASSWORD_ERROR_MSG, ""),
@@ -310,7 +322,7 @@ public class LoginTest extends ApplicationTest {
      * @param user the valid user credentials to test
      */
     @ParameterizedTest
-    @MethodSource("validUsersProvider")
+    @MethodSource("validUsersCredentialsProvider")
     public void testSuccessfulAuthentication(UsernamePasswordCredentials user) {
         enterUsername(user.getUsername());
         enterPassword(user.getPassword());
@@ -325,11 +337,19 @@ public class LoginTest extends ApplicationTest {
 
     /**
      * Provides a stream of valid users.
+     * <p>
+     * This method returns a stream of {@link UsernamePasswordCredentials} representing valid users.
+     * If no valid users are available, it throws an {@link IllegalStateException}.
+     * </p>
      *
      * @return a stream of {@link UsernamePasswordCredentials} representing valid users
+     * @throws IllegalStateException if no valid users are available for testing
      */
-    private static Stream<UsernamePasswordCredentials> validUsersProvider() {
-        return users.stream();
+    private Stream<UsernamePasswordCredentials> validUsersCredentialsProvider() {
+        if (userCredentials == null || userCredentials.isEmpty()) {
+            throw new IllegalStateException("No valid users available for testing.");
+        }
+        return userCredentials.stream();
     }
 
     /**
